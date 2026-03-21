@@ -1,5 +1,5 @@
 import {Player} from "./module/player.js";
-import {keyinput} from "./module/keyinput.js";
+import {keyinput, mobileControls} from "./module/keyinput.js";
 import { Tilemap } from "./module/maploader.js";
 import {Camera} from "./module/camera.js";
 import {VoiceChat} from "./module/voicechat.js";
@@ -35,6 +35,9 @@ window.setup = function() {
     //surface.fill(255);
     frameRate(1000);
     //player.playerRect();
+
+    // Initialize mobile controls
+    mobileControls.init();
 
     // Initialize voice chat after a short delay to ensure socket is connected
     setTimeout(() => {
@@ -97,6 +100,25 @@ window.draw = function() {
     }
 
     pop();
+
+    // Draw mobile controls if on mobile device
+    mobileControls.drawControls();
+    
+    // Handle mobile voice button press
+    if (mobileControls.voiceButtonPressed && voiceChat) {
+        mobileControls.voiceButtonPressed = false;
+        if (voiceChat.isEnabled) {
+            voiceChat.stopVoiceChat();
+        } else {
+            voiceChat.startVoiceChat();
+        }
+    }
+
+    // Handle mobile mute button press
+    if (mobileControls.muteButtonPressed && voiceChat && voiceChat.isEnabled) {
+        mobileControls.muteButtonPressed = false;
+        voiceChat.toggleMute();
+    }
 }
 
 window.mousePressed = function() {
@@ -166,3 +188,18 @@ document.addEventListener('keydown', function(e) {
         e.preventDefault();
     }
 });
+
+// Touch event handlers for mobile controls
+window.touchStarted = function() {
+    if (mobileControls.isActive && touches.length > 0) {
+        const touch = touches[0];
+        mobileControls.checkButtonTouches(touch.x, touch.y);
+        return false;
+    }
+}
+
+window.touchEnded = function() {
+    if (mobileControls.isActive) {
+        mobileControls.touchInput = "none";
+    }
+}
