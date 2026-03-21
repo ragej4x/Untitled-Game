@@ -78,48 +78,49 @@ export const mobileControls = {
         const buttonSize = this.buttonSize;
         const padding = this.padding;
         
-        // Draw movement buttons (left side)
-        fill(100, 150, 255);
+        // Cache window dimensions
+        const vcWidth = (windowWidth || 800) - padding - buttonSize;
+
+        // Optimize: set styles once
         stroke(200);
         strokeWeight(2);
         textSize(20);
         textAlign(CENTER, CENTER);
 
-        // Up button
+        // Draw movement buttons (left side) - simplified
+        fill(100, 150, 255);
+        
+        // Up
         rect(padding + buttonSize, padding, buttonSize, buttonSize);
         fill(0);
         text("↑", padding + 1.5 * buttonSize, padding + buttonSize / 2);
 
-        // Down button
+        // Down
         fill(100, 150, 255);
         rect(padding + buttonSize, padding + buttonSize * 2, buttonSize, buttonSize);
         fill(0);
         text("↓", padding + 1.5 * buttonSize, padding + 2.5 * buttonSize);
 
-        // Left button
+        // Left
         fill(100, 150, 255);
         rect(padding, padding + buttonSize, buttonSize, buttonSize);
         fill(0);
         text("←", padding + buttonSize / 2, padding + 1.5 * buttonSize);
 
-        // Right button
+        // Right
         fill(100, 150, 255);
         rect(padding + buttonSize * 2, padding + buttonSize, buttonSize, buttonSize);
         fill(0);
         text("→", padding + 2.5 * buttonSize, padding + 1.5 * buttonSize);
 
-        // Voice chat button (right side)
-        const vcWidth = (windowWidth || 800) - padding - buttonSize;
+        // Voice buttons - only render if mobile enabled
         fill(100, 255, 150);
-        if (this.voiceButtonPressed) fill(50, 200, 100);
         rect(vcWidth, padding, buttonSize, buttonSize);
         fill(0);
         textSize(14);
         text("VOICE", vcWidth + buttonSize / 2, padding + buttonSize / 2);
 
-        // Mute button
         fill(255, 150, 100);
-        if (this.muteButtonPressed) fill(200, 100, 50);
         rect(vcWidth, padding + buttonSize + 10, buttonSize, buttonSize);
         fill(0);
         text("MUTE", vcWidth + buttonSize / 2, padding + buttonSize / 2 + buttonSize + 10);
