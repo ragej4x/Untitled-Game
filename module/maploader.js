@@ -106,16 +106,38 @@ export class Tilemap {
 
     load(camera) {
         fill(100);
+        
+        // Calculate visible world boundaries (accounting for scale(2) in sketch)
+        const viewWidth = windowWidth / 2;  // World width at scale(2)
+        const viewHeight = windowHeight / 2; // World height at scale(2)
+        const minWorldX = camera.cx;
+        const maxWorldX = camera.cx + viewWidth;
+        const minWorldY = camera.cy;
+        const maxWorldY = camera.cy + viewHeight;
+
+        // Only render tiles within visible bounds
         for (let y = 0; y < this.tiles.length; y++) {
             for (let x = 0; x < this.tiles[y].length; x++) {
-                if (this.tiles[y][x] === 1) {
-                    rect(
-                        x * this.tile_size - camera.cx,
-                        y * this.tile_size - camera.cy,
-                        this.tile_size,
-                        this.tile_size
-                    );
+                if (this.tiles[y][x] !== 1) continue;
+
+                // Calculate tile world position
+                const tileWorldX = x * this.tile_size;
+                const tileWorldY = y * this.tile_size;
+                const tileWorldX2 = tileWorldX + this.tile_size;
+                const tileWorldY2 = tileWorldY + this.tile_size;
+
+                // Frustum culling: only render if tile is in view
+                if (tileWorldX2 <= minWorldX || tileWorldX >= maxWorldX ||
+                    tileWorldY2 <= minWorldY || tileWorldY >= maxWorldY) {
+                    continue; // Skip tile if outside screen bounds
                 }
+
+                rect(
+                    tileWorldX - camera.cx,
+                    tileWorldY - camera.cy,
+                    this.tile_size,
+                    this.tile_size
+                );
             }
         }
 
@@ -125,12 +147,23 @@ export class Tilemap {
             strokeWeight(1);
             noFill();
             
-            // Draw grid
+            // Draw grid only for visible tiles
             for (let y = 0; y < this.tiles.length; y++) {
                 for (let x = 0; x < this.tiles[y].length; x++) {
+                    const tileWorldX = x * this.tile_size;
+                    const tileWorldY = y * this.tile_size;
+                    const tileWorldX2 = tileWorldX + this.tile_size;
+                    const tileWorldY2 = tileWorldY + this.tile_size;
+
+                    // Skip grid cells outside view
+                    if (tileWorldX2 <= minWorldX || tileWorldX >= maxWorldX ||
+                        tileWorldY2 <= minWorldY || tileWorldY >= maxWorldY) {
+                        continue;
+                    }
+
                     rect(
-                        x * this.tile_size - camera.cx,
-                        y * this.tile_size - camera.cy,
+                        tileWorldX - camera.cx,
+                        tileWorldY - camera.cy,
                         this.tile_size,
                         this.tile_size
                     );

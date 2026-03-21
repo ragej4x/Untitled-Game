@@ -1,5 +1,5 @@
 
-let socket = io("https://minigame.taketwomanila.com");
+let socket = io("http://127.0.0.1:5000");
 
 
 export class Socket {
@@ -7,6 +7,7 @@ export class Socket {
     this.networkPlayers = {};
     this.ownSid = null;
     this.mapData = null;
+    this.socket = socket;  // Expose raw socket for external use
 
     socket.on("connect", () => {
       this.ownSid = socket.id;
