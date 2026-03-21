@@ -4,13 +4,14 @@ export class Player {
     constructor (){
         this.x = 100;
         this.y = 100;
-        this.x_vel = 0
+        this.x_vel = 0;
         this.y_vel = 0;
         this.width = 32;
         this.height = 32;
         this.speed = 5;
-        
-        this.username;
+        this.color = [0, 255, 0];
+        this.username = "Player";
+        this.sprite = null; // image option
     }
     move(direction) {
         this.x_vel = 0;
@@ -48,8 +49,12 @@ export class Player {
     }
 
     draw(camera) {
-        fill(0, 255, 0);
-        rect(this.x - camera.cx, this.y - camera.cy, this.width, this.height);
+        if (this.sprite) {
+            image(this.sprite, this.x - camera.cx, this.y - camera.cy, this.width, this.height);
+        } else {
+            fill(...this.color);
+            rect(this.x - camera.cx, this.y - camera.cy, this.width, this.height);
+        }
     }
 
     addNetworkPlayer(socket, camera){

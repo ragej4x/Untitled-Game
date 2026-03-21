@@ -16,12 +16,24 @@ let player = new Player();
 let tilemap = new Tilemap();
 let camera = new Camera(player);
 
+window.preload = function(){
+    // put a player image in this project path, or customize path
+    // e.g., create a "assets" folder and place "player.png"
+    const imgPath = "assets/test.png";
+    player.sprite = loadImage(imgPath, () => {
+        console.log("Player sprite loaded:", imgPath);
+    }, (err) => {
+        console.warn("Failed to load player sprite", imgPath, err);
+        player.sprite = null;
+    });
+}
 
 window.setup = function() {
     createCanvas(windowWidth,windowHeight);
     //surface = createGraphics(400,500);
     //surface.fill(255);
     frameRate(1000);
+    //player.playerRect();
 
     
 }
@@ -30,27 +42,84 @@ window.draw = function() {
     background(0);
     scale(2);
 
-    player.move(keyinput());
-    player.applyVelocityWithCollision(tilemap);
+    if (!tilemap.editorMode) {
+        player.move(keyinput());
+        player.applyVelocityWithCollision(tilemap);
 
-    // Send current player state to server each frame
-    socket.sendPlayer(player);
+        // Send current player state to server each frame
+        socket.sendPlayer(player);
 
-    camera.update();
+        camera.update();
+    }
+
+    // Consume map data from server one time, then clear
+    if (socket.mapData) {
+        tilemap.setMap(socket.mapData);
+        socket.mapData = null;
+    }
 
     push();
     tilemap.load(camera);
 
     // draw other players from server state
-    player.addNetworkPlayer(socket,camera);
+    if (!tilemap.editorMode) {
+        player.addNetworkPlayer(socket, camera);
+        // draw this player
+        player.draw(camera);
+    }
 
-    // draw this player
-    //fill(0, 255, 0);
-    player.draw(camera);
-    text(frameRate(),10,10);
-    pop();
+    text(frameRate(), 10, 10);
     
+    // Display editor mode indicator
+    if (tilemap.editorMode) {
+        fill(255, 255, 0);
+        textSize(16);
+        text("EDITOR MODE - Press E to toggle, Click to paint, C to clear, S to save", 10, 30);
+    }
+
+    pop();
 }
 
+window.mousePressed = function() {
+    if (tilemap.editorMode) {
+        const world = tilemap.screenToWorld(mouseX, mouseY, camera);
+        tilemap.toggleTile(world.x, world.y);
+        return false;
+    }
+}
 
+window.keyPressed = function() {
+    // E key - toggle editor mode
+    if (key.toLowerCase() === 'e') {
+        tilemap.toggleEditorMode();
+        return false;
+    }
+    // C key - clear map
+    if (key.toLowerCase() === 'c' && tilemap.editorMode) {
+        tilemap.clearMap();
+        return false;
+    }
+    // S key - save/export map
+    if (key.toLowerCase() === 's' && tilemap.editorMode) {
+        console.log("Saving map...");
+        tilemap.exportMapData();
+        tilemap.saveMapToBackend(socket);
+        return false;
+    }
+}
 
+// Add global keydown listener to prevent browser defaults
+document.addEventListener('keydown', function(e) {
+    if (tilemap && tilemap.editorMode) {
+        if (e.key.toLowerCase() === 's') {
+            e.preventDefault();
+            console.log("Prevented default S key behavior");
+        }
+        if (e.key.toLowerCase() === 'c') {
+            e.preventDefault();
+        }
+    }
+    if (e.key.toLowerCase() === 'e') {
+        e.preventDefault();
+    }
+});
