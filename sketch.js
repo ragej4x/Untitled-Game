@@ -2,7 +2,8 @@ import {Player} from "./module/player.js";
 import {keyinput, mobileControls} from "./module/keyinput.js";
 import { Tilemap } from "./module/maploader.js";
 import {Camera} from "./module/camera.js";
-import {VoiceChat} from "./module/voicechat.js";
+import {PlayerAnimator} from "./module/animation.js";
+//import {VoiceChat} from "./module/voicechat.js";
 
 //socket
 import {Socket} from "./module/backend/socket.js";
@@ -15,18 +16,89 @@ socket.init();
 let player = new Player();
 let tilemap = new Tilemap();
 let camera = new Camera(player);
-let voiceChat = null;
+let animator = null;
+let frameGroups = null; // Store globally for network players
+//let voiceChat = null;
 
 window.preload = function(){
-    // put a player image in this project path, or customize path
-    // e.g., create a "assets" folder and place "player.png"
-    const imgPath = "assets/test.png";
-    player.sprite = loadImage(imgPath, () => {
-        console.log("Player sprite loaded:", imgPath);
-    }, (err) => {
-        console.warn("Failed to load player sprite", imgPath, err);
-        player.sprite = null;
-    });
+    // Load animation frames
+    frameGroups = {
+        idle_default: [
+            loadImage("assets/anim/id1.anim"),
+            loadImage("assets/anim/id2.anim"),
+            loadImage("assets/anim/id3.anim"),
+            loadImage("assets/anim/id4.anim"),
+            loadImage("assets/anim/id5.anim"),
+            loadImage("assets/anim/id6.anim")
+        ],
+        idle_down: [
+            loadImage("assets/anim/idD1.anim"),
+            loadImage("assets/anim/idD2.anim"),
+            loadImage("assets/anim/idD3.anim"),
+            loadImage("assets/anim/idD4.anim"),
+            loadImage("assets/anim/idD5.anim"),
+            loadImage("assets/anim/idD6.anim")
+        ],
+        idle_up: [
+            loadImage("assets/anim/idU1.anim"),
+            loadImage("assets/anim/idU2.anim"),
+            loadImage("assets/anim/idU3.anim"),
+            loadImage("assets/anim/idU4.anim"),
+            loadImage("assets/anim/idU5.anim"),
+            loadImage("assets/anim/idU6.anim")
+        ],
+        idle_left: [
+            loadImage("assets/anim/id1.anim"),
+            loadImage("assets/anim/id2.anim"),
+            loadImage("assets/anim/id3.anim"),
+            loadImage("assets/anim/id4.anim"),
+            loadImage("assets/anim/id5.anim"),
+            loadImage("assets/anim/id6.anim")
+        ],
+        walk_default: [
+            loadImage("assets/anim/r1.anim"),
+            loadImage("assets/anim/r2.anim"),
+            loadImage("assets/anim/r3.anim"),
+            loadImage("assets/anim/r4.anim"),
+            loadImage("assets/anim/r5.anim"),
+            loadImage("assets/anim/r6.anim")
+        ],
+        walk_down: [
+            loadImage("assets/anim/rD1.anim"),
+            loadImage("assets/anim/rD2.anim"),
+            loadImage("assets/anim/rD3.anim"),
+            loadImage("assets/anim/rD4.anim"),
+            loadImage("assets/anim/rD5.anim"),
+            loadImage("assets/anim/rD6.anim")
+        ],
+        walk_up: [
+            loadImage("assets/anim/rU1.anim"),
+            loadImage("assets/anim/rU2.anim"),
+            loadImage("assets/anim/rU3.anim"),
+            loadImage("assets/anim/rU4.anim"),
+            loadImage("assets/anim/rU5.anim"),
+            loadImage("assets/anim/rU6.anim")
+        ],
+        walk_left: [
+            loadImage("assets/anim/r1.anim"),
+            loadImage("assets/anim/r2.anim"),
+            loadImage("assets/anim/r3.anim"),
+            loadImage("assets/anim/r4.anim"),
+            loadImage("assets/anim/r5.anim"),
+            loadImage("assets/anim/r6.anim")
+        ],
+        walk_right: [
+            loadImage("assets/anim/r1.anim"),
+            loadImage("assets/anim/r2.anim"),
+            loadImage("assets/anim/r3.anim"),
+            loadImage("assets/anim/r4.anim"),
+            loadImage("assets/anim/r5.anim"),
+            loadImage("assets/anim/r6.anim")
+        ]
+    };
+    
+    animator = new PlayerAnimator(frameGroups, { frameDelay: 100 });
+    player.setAnimator(animator);
 }
 
 window.setup = function() {
@@ -40,15 +112,15 @@ window.setup = function() {
     mobileControls.init();
 
     // Initialize voice chat after a short delay to ensure socket is connected
-    setTimeout(() => {
-        voiceChat = new VoiceChat(socket);
-        console.log("Voice chat initialized");
-    }, 500);
+    //setTimeout(() => {
+    //    voiceChat = new VoiceChat(socket);
+    //    console.log("Voice chat initialized");
+    //}, 500);
 }
 
 window.draw = function() { 
     background(0);
-    scale(2);
+    scale(3.5);
 
     if (!tilemap.editorMode) {
         player.move(keyinput());
@@ -71,26 +143,20 @@ window.draw = function() {
 
     // draw other players from server state
     if (!tilemap.editorMode) {
-        player.addNetworkPlayer(socket, camera);
+        player.addNetworkPlayer(socket, camera, frameGroups);
         // draw this player
         player.draw(camera);
     }
 
     text(frameRate(), 10, 10);
     
-    // Display voice chat status
-    if (voiceChat) {
-        const vcStatus = voiceChat.getStatus();
-        fill(0, 200, 255);
-        textSize(12);
-        let vcText = "VOICE: ";
-        if (vcStatus.enabled) {
-            vcText += (vcStatus.muted ? "MUTED" : "ON") + ` (${vcStatus.activePeers} peers)`;
-        } else {
-            vcText += "OFF";
-        }
-        text(vcText, 10, 90);
-    }
+    // Display voice chat status - optimized rendering
+    //if (voiceChat && voiceChat.isEnabled) {
+    //    const vcStatus = voiceChat.getStatus();
+    //    fill(0, 200, 255);
+    //    textSize(12);
+    //    text(`VOICE: ${vcStatus.muted ? "MUTED" : "ON"} (${vcStatus.activePeers}p)`, 10, 90);
+    //}
     
     // Display editor mode indicator
     if (tilemap.editorMode) {
@@ -105,20 +171,20 @@ window.draw = function() {
     mobileControls.drawControls();
     
     // Handle mobile voice button press
-    if (mobileControls.voiceButtonPressed && voiceChat) {
-        mobileControls.voiceButtonPressed = false;
-        if (voiceChat.isEnabled) {
-            voiceChat.stopVoiceChat();
-        } else {
-            voiceChat.startVoiceChat();
-        }
-    }
+    //if (mobileControls.voiceButtonPressed && voiceChat) {
+    //    mobileControls.voiceButtonPressed = false;
+    //    if (voiceChat.isEnabled) {
+    //        voiceChat.stopVoiceChat();
+    //    } else {
+    //        voiceChat.startVoiceChat();
+    //    }
+    //}
 
     // Handle mobile mute button press
-    if (mobileControls.muteButtonPressed && voiceChat && voiceChat.isEnabled) {
-        mobileControls.muteButtonPressed = false;
-        voiceChat.toggleMute();
-    }
+    //if (mobileControls.muteButtonPressed && voiceChat && voiceChat.isEnabled) {
+    //    mobileControls.muteButtonPressed = false;
+    //    voiceChat.toggleMute();
+    //}
 }
 
 window.mousePressed = function() {
@@ -147,24 +213,6 @@ window.keyPressed = function() {
         tilemap.saveMapToBackend(socket);
         return false;
     }
-    // V key - toggle voice chat
-    if (key.toLowerCase() === 'v') {
-        if (voiceChat) {
-            if (voiceChat.isEnabled) {
-                voiceChat.stopVoiceChat();
-            } else {
-                voiceChat.startVoiceChat();
-            }
-        }
-        return false;
-    }
-    // M key - toggle mute
-    if (key.toLowerCase() === 'm') {
-        if (voiceChat && voiceChat.isEnabled) {
-            voiceChat.toggleMute();
-        }
-        return false;
-    }
 }
 
 // Add global keydown listener to prevent browser defaults
@@ -181,12 +229,12 @@ document.addEventListener('keydown', function(e) {
     if (e.key.toLowerCase() === 'e') {
         e.preventDefault();
     }
-    if (e.key.toLowerCase() === 'v') {
-        e.preventDefault();
-    }
-    if (e.key.toLowerCase() === 'm') {
-        e.preventDefault();
-    }
+    //if (e.key.toLowerCase() === 'v') {
+    //    e.preventDefault();
+    //}
+    //if (e.key.toLowerCase() === 'm') {
+    //    e.preventDefault();
+    //}
 });
 
 // Touch event handlers for mobile controls

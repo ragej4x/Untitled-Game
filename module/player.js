@@ -1,4 +1,5 @@
 
+import { PlayerAnimator } from "./animation.js";
 
 export class Player {
     constructor (){
@@ -6,22 +7,55 @@ export class Player {
         this.y = 100;
         this.x_vel = 0;
         this.y_vel = 0;
-        this.width = 32;
+        this.width = 16;
         this.height = 32;
-        this.speed = 5;
+        this.speed = 2;
         this.color = [0, 255, 0];
         this.username = "Player";
         this.sprite = null; // image option
+        this.animator = null; // animation handler
+        this.lastDirection = "down";
+        this.currentDirection = "none"; // Current movement direction (walk vs idle)
+        
+        // Collider dimensions (separate from image size)
+        this.colliderWidth = 14;
+        this.colliderHeight = 10;
+        this.colliderOffsetX = 0; // X offset from image position
+        this.colliderOffsetY = 21; // Y offset from image position
+        this.showCollider = false; // Debug flag
+        
+        // Network players storage - track animator state per network player
+        this.networkPlayerAnimators = {};
     }
+
+    setAnimator(animator) {
+        this.animator = animator;
+    }
+
+
+
     move(direction) {
         this.x_vel = 0;
         this.y_vel = 0;
+        
+        // Store direction for animation (only update if not "none")
+        if (direction && direction !== "none") {
+            this.lastDirection = direction;
+        }
+
+        // Track current movement direction (for network sync)
+        this.currentDirection = direction || "none";
 
         switch (direction) {
             case "left":  this.x_vel = -this.speed * (deltaTime / 16.67); break;
             case "right": this.x_vel =  this.speed * (deltaTime / 16.67); break;
             case "up":    this.y_vel = -this.speed * (deltaTime / 16.67); break; 
             case "down":  this.y_vel =  this.speed * (deltaTime / 16.67); break; 
+        }
+
+        // Update animation based on movement and direction
+        if (this.animator) {
+            this.animator.update(direction, this.lastDirection, deltaTime);
         }
     }
     applyVelocityWithCollision(tilemap) {
@@ -30,9 +64,9 @@ export class Player {
         for (let tile of tilemap.getOverlappingTiles(this)) {
             console.log("H collision", tile, "x_vel:", this.x_vel);
             if (this.x_vel > 0) {
-                this.x = tile.x - this.width;
+                this.x = tile.x - this.colliderWidth - this.colliderOffsetX;
             } else if (this.x_vel < 0) {
-                this.x = tile.x + tilemap.tile_size;
+                this.x = tile.x + tilemap.tile_size - this.colliderOffsetX;
             }
         }
 
@@ -41,23 +75,44 @@ export class Player {
         for (let tile of tilemap.getOverlappingTiles(this)) {
             console.log("V collision", tile, "y_vel:", this.y_vel);
             if (this.y_vel > 0) {
-                this.y = tile.y - this.height;
+                this.y = tile.y - this.colliderHeight - this.colliderOffsetY;
             } else if (this.y_vel < 0) {
-                this.y = tile.y + tilemap.tile_size;
+                this.y = tile.y + tilemap.tile_size - this.colliderOffsetY;
             }
         }
     }
 
     draw(camera) {
-        if (this.sprite) {
+        if (this.animator) {
+            this.animator.draw(
+                this.x - camera.cx,
+                this.y - camera.cy,
+                this.width,
+                this.height
+            );
+        } else if (this.sprite) {
             image(this.sprite, this.x - camera.cx, this.y - camera.cy, this.width, this.height);
         } else {
             fill(...this.color);
             rect(this.x - camera.cx, this.y - camera.cy, this.width, this.height);
         }
+        
+        // Draw collider box for debugging
+        if (this.showCollider) {
+            stroke(255, 0, 0);
+            strokeWeight(2);
+            noFill();
+            rect(
+                this.x + this.colliderOffsetX - camera.cx,
+                this.y + this.colliderOffsetY - camera.cy,
+                this.colliderWidth,
+                this.colliderHeight
+            );
+            noStroke();
+        }
     }
 
-    addNetworkPlayer(socket, camera){
+    addNetworkPlayer(socket, camera, frameGroups){
         for (let sid in socket.networkPlayers) {
             if (!socket.networkPlayers.hasOwnProperty(sid)) continue;
             if (sid === socket.ownSid) continue;
@@ -65,8 +120,63 @@ export class Player {
             let p = socket.networkPlayers[sid];
             if (!p || typeof p.x !== 'number' || typeof p.y !== 'number') continue;
 
-            fill(255, 0, 0);
-            rect(p.x - camera.cx, p.y - camera.cy, this.width, this.height);
+            // Create a separate animator for this network player if needed
+            if (!this.networkPlayerAnimators[sid] && frameGroups) {
+                this.networkPlayerAnimators[sid] = {
+                    animator: new PlayerAnimator(frameGroups, { frameDelay: 100 }),
+                    lastDirection: p.lastDirection || "down"
+                };
+            }
+
+            let playerState = this.networkPlayerAnimators[sid];
+            
+            // Use the current direction from server (walk vs idle)
+            let movementDirection = p.direction || "none";
+            
+            // Update facing direction for animation
+            if (p.lastDirection) {
+                playerState.lastDirection = p.lastDirection;
+            }
+
+            // Update animator with the current movement direction
+            if (playerState.animator) {
+                playerState.animator.update(movementDirection, playerState.lastDirection, deltaTime);
+            }
+
+            // Draw network player with animation
+            let playerWidth = p.width || this.width;
+            let playerHeight = p.height || this.height;
+            
+            if (playerState.animator) {
+                playerState.animator.draw(
+                    p.x - camera.cx,
+                    p.y - camera.cy,
+                    playerWidth,
+                    playerHeight
+                );
+            } else {
+                fill(255, 0, 0);
+                rect(p.x - camera.cx, p.y - camera.cy, playerWidth, playerHeight);
+            }
+
+            // Draw collider box for network player
+            let colliderWidth = p.colliderWidth || playerWidth;
+            let colliderHeight = p.colliderHeight || playerHeight;
+            let colliderOffsetX = p.colliderOffsetX || 0;
+            let colliderOffsetY = p.colliderOffsetY || 0;
+            
+            if (this.showCollider) {
+                stroke(255, 100, 100);
+                strokeWeight(2);
+                noFill();
+                rect(
+                    p.x + colliderOffsetX - camera.cx,
+                    p.y + colliderOffsetY - camera.cy,
+                    colliderWidth,
+                    colliderHeight
+                );
+                noStroke();
+            }
         }
     }
 

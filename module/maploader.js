@@ -1,5 +1,5 @@
 export class Tilemap {
-    tile_size = 32;
+    tile_size = 16;
     tiles = [];
     editorMode = false;
     lastSaveTime = 0;
@@ -15,15 +15,13 @@ export class Tilemap {
         console.log(this.editorMode ? "EDITOR MODE ON - Press 'E' to toggle, Click to paint/erase tiles, 'C' to clear map" : "PLAY MODE ON");
     }
 
-    // Convert screen coordinates to world coordinates
     screenToWorld(sx, sy, camera) {
         return {
-            x: sx / 2 + camera.cx,  // Account for scale(2) in sketch
+            x: sx / 2 + camera.cx,
             y: sy / 2 + camera.cy
         };
     }
 
-    // Convert world coordinates to tile grid coordinates
     worldToTile(wx, wy) {
         return {
             x: Math.floor(wx / this.tile_size),
@@ -31,7 +29,6 @@ export class Tilemap {
         };
     }
 
-    // Toggle tile at world position
     toggleTile(worldX, worldY) {
         const tile = this.worldToTile(worldX, worldY);
         const x = tile.x;
@@ -42,7 +39,6 @@ export class Tilemap {
         }
     }
 
-    // Clear all tiles
     clearMap() {
         for (let y = 0; y < this.tiles.length; y++) {
             for (let x = 0; x < this.tiles[y].length; x++) {
@@ -52,7 +48,6 @@ export class Tilemap {
         console.log("Map cleared!");
     }
 
-    // Export map as text format for tilemap_data.txt
     exportMapData() {
         let data = "";
         for (let y = 0; y < this.tiles.length; y++) {
@@ -64,10 +59,9 @@ export class Tilemap {
         return data;
     }
 
-    // Send map to backend for saving
     saveMapToBackend(socket) {
         const mapData = {
-            tile_size: 32,
+            tile_size: 16,
             tiles: this.tiles
         };
         console.log("Sending map to backend:", mapData);
@@ -76,7 +70,6 @@ export class Tilemap {
         console.log("Map saved to backend!");
     }
 
-    // Check if recently saved for visual feedback
     isSavedRecently() {
         return Date.now() - this.lastSaveTime < 2000;
     }
@@ -92,8 +85,10 @@ export class Tilemap {
                 let tx = x * this.tile_size;
                 let ty = y * this.tile_size;
 
-                let overlapX = player.x < tx + this.tile_size && player.x + player.width  > tx;
-                let overlapY = player.y < ty + this.tile_size && player.y + player.height > ty;
+                let colliderLeft = player.x + player.colliderOffsetX;
+                let colliderTop = player.y + player.colliderOffsetY;
+                let overlapX = colliderLeft < tx + this.tile_size && colliderLeft + player.colliderWidth  > tx;
+                let overlapY = colliderTop < ty + this.tile_size && colliderTop + player.colliderHeight > ty;
 
                 if (overlapX && overlapY) {
                     overlapping.push({ x: tx, y: ty });
@@ -106,38 +101,18 @@ export class Tilemap {
 
     load(camera) {
         fill(100);
+        const ts = this.tile_size;
         
-        // Calculate visible world boundaries (accounting for scale(2) in sketch)
-        const viewWidth = windowWidth / 2;  // World width at scale(2)
-        const viewHeight = windowHeight / 2; // World height at scale(2)
-        const minWorldX = camera.cx;
-        const maxWorldX = camera.cx + viewWidth;
-        const minWorldY = camera.cy;
-        const maxWorldY = camera.cy + viewHeight;
-
-        // Only render tiles within visible bounds
         for (let y = 0; y < this.tiles.length; y++) {
             for (let x = 0; x < this.tiles[y].length; x++) {
-                if (this.tiles[y][x] !== 1) continue;
-
-                // Calculate tile world position
-                const tileWorldX = x * this.tile_size;
-                const tileWorldY = y * this.tile_size;
-                const tileWorldX2 = tileWorldX + this.tile_size;
-                const tileWorldY2 = tileWorldY + this.tile_size;
-
-                // Frustum culling: only render if tile is in view
-                if (tileWorldX2 <= minWorldX || tileWorldX >= maxWorldX ||
-                    tileWorldY2 <= minWorldY || tileWorldY >= maxWorldY) {
-                    continue; // Skip tile if outside screen bounds
+                if (this.tiles[y][x] === 1) {
+                    rect(
+                        x * ts - camera.cx,
+                        y * ts - camera.cy,
+                        ts,
+                        ts
+                    );
                 }
-
-                rect(
-                    tileWorldX - camera.cx,
-                    tileWorldY - camera.cy,
-                    this.tile_size,
-                    this.tile_size
-                );
             }
         }
 
@@ -147,25 +122,14 @@ export class Tilemap {
             strokeWeight(1);
             noFill();
             
-            // Draw grid only for visible tiles
+            // Draw grid
             for (let y = 0; y < this.tiles.length; y++) {
                 for (let x = 0; x < this.tiles[y].length; x++) {
-                    const tileWorldX = x * this.tile_size;
-                    const tileWorldY = y * this.tile_size;
-                    const tileWorldX2 = tileWorldX + this.tile_size;
-                    const tileWorldY2 = tileWorldY + this.tile_size;
-
-                    // Skip grid cells outside view
-                    if (tileWorldX2 <= minWorldX || tileWorldX >= maxWorldX ||
-                        tileWorldY2 <= minWorldY || tileWorldY >= maxWorldY) {
-                        continue;
-                    }
-
                     rect(
-                        tileWorldX - camera.cx,
-                        tileWorldY - camera.cy,
-                        this.tile_size,
-                        this.tile_size
+                        x * ts - camera.cx,
+                        y * ts - camera.cy,
+                        ts,
+                        ts
                     );
                 }
             }
@@ -178,10 +142,10 @@ export class Tilemap {
                 stroke(255, 255, 0);
                 strokeWeight(2);
                 rect(
-                    tile.x * this.tile_size - camera.cx,
-                    tile.y * this.tile_size - camera.cy,
-                    this.tile_size,
-                    this.tile_size
+                    tile.x * ts - camera.cx,
+                    tile.y * ts - camera.cy,
+                    ts,
+                    ts
                 );
             }
 

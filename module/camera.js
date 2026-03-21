@@ -9,8 +9,8 @@ export class Camera {
     }
 
     update() {
-        this.cx += (this.player.x - this.cx - window.innerWidth / 4) * 0.07;
-        this.cy += (this.player.y - this.cy - window.innerHeight /4) * 0.07;
+        this.cx += (this.player.x - this.cx - window.innerWidth / 7.5) * 0.07;
+        this.cy += (this.player.y - this.cy - window.innerHeight /8) * 0.07;
 
         // store screen center inside camera
         this.offsetX = windowWidth ;

@@ -1,5 +1,5 @@
 
-let socket = io("https://minigame.taketwomanila.com");
+let socket = io("http://127.0.0.1:5000");
 
 
 export class Socket {
@@ -7,7 +7,6 @@ export class Socket {
     this.networkPlayers = {};
     this.ownSid = null;
     this.mapData = null;
-    this.socket = socket;  // Expose raw socket for external use
 
     socket.on("connect", () => {
       this.ownSid = socket.id;
@@ -23,13 +22,6 @@ export class Socket {
       this.mapData = data;
       console.log("Received map_data", data);
     });
-
-    socket.on("map_saved", (response) => {
-      console.log("Map saved successfully on server!");
-      if (this.onMapSaved) {
-        this.onMapSaved();
-      }
-    });
   }
 
   requestMap() {
@@ -43,17 +35,15 @@ export class Socket {
       y: player.y,
       id: this.ownSid,
       username: player.username,
+      direction: player.currentDirection,
+      lastDirection: player.lastDirection,
+      width: player.width,
+      height: player.height,
+      colliderWidth: player.colliderWidth,
+      colliderHeight: player.colliderHeight,
+      colliderOffsetX: player.colliderOffsetX,
+      colliderOffsetY: player.colliderOffsetY
     });
-  }
-
-  saveMap(mapData) {
-    console.log("Attempting to save map...");
-    if (!socket.connected) {
-      console.error("Socket not connected! Cannot save map.");
-      return;
-    }
-    socket.emit("save_map", mapData);
-    console.log("Save map event emitted to server");
   }
 
 }

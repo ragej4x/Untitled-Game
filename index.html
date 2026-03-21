@@ -14,6 +14,24 @@
   </head>
 
   <body>
+    <script>
+      // Toggleable inspect protection (set to false to enable inspect/devtools)
+      const ENABLE_INSPECT_PROTECTION = true;
+
+      // if (ENABLE_INSPECT_PROTECTION) {
+      //   // Disable right-click context menu
+      //   document.addEventListener('contextmenu', (e) => e.preventDefault());
+        
+      //   // Disable F12, Ctrl+Shift+I, Ctrl+Shift+C, Ctrl+Shift+J, Ctrl+U
+      //   document.addEventListener('keydown', (e) => {
+      //     if (e.key === 'F12' || 
+      //         (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'C' || e.key === 'J')) ||
+      //         (e.ctrlKey && e.key === 'u')) {
+      //       e.preventDefault();
+      //     }
+      //   });
+      // }
+    </script>
     <script type="module" src="sketch.js"></script>
   </body>
 </html>

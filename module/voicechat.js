@@ -5,13 +5,17 @@ export class VoiceChat {
         this.peerConnections = {};
         this.isEnabled = false;
         this.isMuted = false;
+        this.maxPeers = 4; // Limit max peer connections
+        this.iceCandidateQueue = {}; // Batch ICE candidates
+        this.lastStatusUpdate = 0;
+        this.statusUpdateInterval = 500; // Only update status every 500ms
         
-        // WebRTC configuration
+        // WebRTC configuration - optimized for performance
         this.peerConfig = {
             iceServers: [
-                { urls: 'stun:stun.l.google.com:19302' },
-                { urls: 'stun:stun1.l.google.com:19302' }
-            ]
+                { urls: 'stun:stun.l.google.com:19302' }
+            ],
+            iceGatheringPolicy: "gather", // Default
         };
 
         this.setupSocketListeners();
@@ -20,19 +24,16 @@ export class VoiceChat {
     setupSocketListeners() {
         // Listen for offer from other peers
         this.socket.socket.on("voice_offer", (data) => {
-            console.log("Received voice offer from:", data.from);
             this.handleVoiceOffer(data);
         });
 
         // Listen for answer from other peers
         this.socket.socket.on("voice_answer", (data) => {
-            console.log("Received voice answer from:", data.from);
             this.handleVoiceAnswer(data);
         });
 
-        // Listen for ICE candidates
+        // Listen for ICE candidates - batched processing
         this.socket.socket.on("voice_ice_candidate", (data) => {
-            console.log("Received ICE candidate from:", data.from);
             this.handleIceCandidate(data);
         });
 
@@ -51,15 +52,19 @@ export class VoiceChat {
 
     // Initiate connections with all players
     async initiatePeerConnections(players) {
-        for (let peerId in players) {
-            if (peerId === this.socket.ownSid) continue; // Skip self
-            if (this.peerConnections[peerId]) continue; // Skip if already connected
+        const playerIds = Object.keys(players).filter(id => id !== this.socket.ownSid);
+        
+        // Limit connections to max peers
+        if (playerIds.length > this.maxPeers) {
+            playerIds.length = this.maxPeers;
+        }
+
+        for (let peerId of playerIds) {
+            if (this.peerConnections[peerId]) continue;
             
-            // Only initiator creates offer (use alphabetical order to avoid duplicates)
             const shouldInitiate = this.socket.ownSid > peerId;
             if (shouldInitiate) {
-                console.log("Initiating connection with:", peerId);
-                await this.createPeerConnection(peerId, true);
+                this.createPeerConnection(peerId, true);
             }
         }
     }
@@ -68,18 +73,17 @@ export class VoiceChat {
         if (this.isEnabled) return;
 
         try {
-            // Request microphone access
+            // Request microphone with minimal processing for performance
             this.localStream = await navigator.mediaDevices.getUserMedia({
                 audio: {
-                    echoCancellation: true,
-                    noiseSuppression: true,
-                    autoGainControl: true
+                    echoCancellation: false,  // Disable for performance
+                    noiseSuppression: false,  // Disable for performance
+                    autoGainControl: false    // Disable for performance
                 },
                 video: false
             });
 
             this.isEnabled = true;
-            console.log("Voice chat enabled, microphone access granted");
 
             // Notify server we're ready for voice chat
             this.socket.socket.emit("voice_chat_ready", {
@@ -87,13 +91,12 @@ export class VoiceChat {
             });
 
             // Create connections with all connected players
-            console.log("Current network players:", this.socket.networkPlayers);
             if (this.socket.networkPlayers && Object.keys(this.socket.networkPlayers).length > 0) {
-                await this.initiatePeerConnections(this.socket.networkPlayers);
+                this.initiatePeerConnections(this.socket.networkPlayers);
             }
 
         } catch (error) {
-            console.error("Error accessing microphone:", error);
+            console.error("Voice chat error:", error);
             alert("Microphone access denied. Check your browser permissions.");
             this.isEnabled = false;
         }
@@ -131,77 +134,85 @@ export class VoiceChat {
         for (let peerId in this.peerConnections) {
             const peerConnection = this.peerConnections[peerId];
             peerConnection.close();
+            delete this.iceCandidateQueue[peerId];
         }
         this.peerConnections = {};
     }
 
     async createPeerConnection(peerId, initiator = false) {
         if (this.peerConnections[peerId]) {
-            console.log("Peer connection already exists with:", peerId);
             return this.peerConnections[peerId];
         }
 
-        console.log(`Creating peer connection with ${peerId} (initiator: ${initiator})`);
+        // Check peer connection limit
+        if (Object.keys(this.peerConnections).length >= this.maxPeers) {
+            return null;
+        }
 
-        const peerConnection = new RTCPeerConnection({
-            iceServers: this.peerConfig.iceServers
-        });
-
+        const peerConnection = new RTCPeerConnection(this.peerConfig);
         this.peerConnections[peerId] = peerConnection;
+        this.iceCandidateQueue[peerId] = [];
 
         // Add local stream tracks to peer connection
         if (this.localStream) {
             this.localStream.getTracks().forEach(track => {
                 peerConnection.addTrack(track, this.localStream);
-                console.log("Added audio track to peer:", peerId);
             });
-        } else {
-            console.warn("No local stream available for peer:", peerId);
         }
 
-        // Handle ICE candidates
+        // Handle ICE candidates - batch them to reduce network traffic
+        let candidateTimer = null;
         peerConnection.onicecandidate = (event) => {
             if (event.candidate) {
-                console.log("Sending ICE candidate to:", peerId);
-                this.socket.socket.emit("voice_ice_candidate", {
-                    to: peerId,
-                    from: this.socket.ownSid,
-                    candidate: event.candidate
-                });
+                // Queue candidate for batching
+                this.iceCandidateQueue[peerId].push(event.candidate);
+                
+                // Send batched candidates every 100ms
+                if (!candidateTimer) {
+                    candidateTimer = setTimeout(() => {
+                        if (this.iceCandidateQueue[peerId].length > 0) {
+                            this.socket.socket.emit("voice_ice_candidate", {
+                                to: peerId,
+                                from: this.socket.ownSid,
+                                candidate: this.iceCandidateQueue[peerId][this.iceCandidateQueue[peerId].length - 1]
+                            });
+                            this.iceCandidateQueue[peerId] = [];
+                        }
+                        candidateTimer = null;
+                    }, 100);
+                }
             }
         };
 
         // Handle remote stream
         peerConnection.ontrack = (event) => {
-            console.log("Received remote audio track from:", peerId);
-            // Create audio element for remote stream
             this.playRemoteStream(peerId, event.streams[0]);
         };
 
         // Handle connection state changes
         peerConnection.onconnectionstatechange = () => {
-            console.log(`Connection state with ${peerId}:`, peerConnection.connectionState);
             if (peerConnection.connectionState === 'failed' || peerConnection.connectionState === 'disconnected') {
-                console.log("Closing failed connection with:", peerId);
                 peerConnection.close();
                 delete this.peerConnections[peerId];
+                delete this.iceCandidateQueue[peerId];
             }
         };
 
         // If initiator, create offer
         if (initiator) {
             try {
-                console.log("Creating offer for:", peerId);
-                const offer = await peerConnection.createOffer();
+                const offer = await peerConnection.createOffer({
+                    offerToReceiveAudio: true,
+                    voiceActivityDetection: false
+                });
                 await peerConnection.setLocalDescription(offer);
-                console.log("Sending offer to:", peerId);
                 this.socket.socket.emit("voice_offer", {
                     to: peerId,
                     from: this.socket.ownSid,
                     offer: offer
                 });
             } catch (error) {
-                console.error("Error creating offer for", peerId, ":", error);
+                console.error("Voice error:", error);
             }
         }
 
@@ -212,10 +223,13 @@ export class VoiceChat {
         const { from, offer } = data;
 
         let peerConnection = await this.createPeerConnection(from, false);
+        if (!peerConnection) return;
 
         try {
             await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
-            const answer = await peerConnection.createAnswer();
+            const answer = await peerConnection.createAnswer({
+                voiceActivityDetection: false
+            });
             await peerConnection.setLocalDescription(answer);
 
             this.socket.socket.emit("voice_answer", {
@@ -223,9 +237,8 @@ export class VoiceChat {
                 from: this.socket.ownSid,
                 answer: answer
             });
-            console.log("Voice answer sent to:", from);
         } catch (error) {
-            console.error("Error handling offer:", error);
+            console.error("Voice error:", error);
         }
     }
 
@@ -235,9 +248,8 @@ export class VoiceChat {
         if (this.peerConnections[from]) {
             try {
                 await this.peerConnections[from].setRemoteDescription(new RTCSessionDescription(answer));
-                console.log("Voice answer received from:", from);
             } catch (error) {
-                console.error("Error handling answer:", error);
+                console.error("Voice error:", error);
             }
         }
     }
@@ -249,13 +261,12 @@ export class VoiceChat {
             try {
                 await this.peerConnections[from].addIceCandidate(new RTCIceCandidate(candidate));
             } catch (error) {
-                console.error("Error adding ICE candidate:", error);
+                // Ignore ICE errors - they're expected
             }
         }
     }
 
     playRemoteStream(peerId, stream) {
-        // Create audio element for remote stream
         let audioElement = document.getElementById(`audio-${peerId}`);
         
         if (!audioElement) {
@@ -263,23 +274,33 @@ export class VoiceChat {
             audioElement.id = `audio-${peerId}`;
             audioElement.autoplay = true;
             audioElement.playsinline = true;
-            audioElement.style.display = 'none';  // Hide audio element (audio only)
+            audioElement.style.display = 'none';
             document.body.appendChild(audioElement);
-            console.log("Created audio element for peer:", peerId);
         }
 
         audioElement.srcObject = stream;
-        console.log("Remote stream connected for peer:", peerId);
     }
 
-    // Get voice chat status
+    // Get voice chat status - throttled to prevent excessive updates
     getStatus() {
-        const activePeerCount = Object.keys(this.peerConnections).length;
-        console.log(`Voice status - Enabled: ${this.isEnabled}, Muted: ${this.isMuted}, Peers: ${activePeerCount}`);
-        return {
+        const now = Date.now();
+        
+        // Only recalculate every interval
+        if (now - this.lastStatusUpdate < this.statusUpdateInterval) {
+            return this._cachedStatus || {
+                enabled: this.isEnabled,
+                muted: this.isMuted,
+                activePeers: 0
+            };
+        }
+
+        this.lastStatusUpdate = now;
+        this._cachedStatus = {
             enabled: this.isEnabled,
             muted: this.isMuted,
-            activePeers: activePeerCount
+            activePeers: Object.keys(this.peerConnections).length
         };
+        
+        return this._cachedStatus;
     }
 }
