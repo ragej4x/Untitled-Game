@@ -74,6 +74,26 @@ def save_tilemap_to_file(map_data):
     except Exception as e:
         print(f"Error saving tilemap: {e}")
 
+# Voice chat events - forward signaling between peers
+@sio.event
+def voice_chat_ready(sid, data):
+    print("Player ready for voice chat:", sid)
+    sio.emit("players_online", {"ready_for_voice": list(players.keys())})
+
+@sio.event
+def voice_offer(sid, data):
+    print(f"Voice offer from {sid} to {data.get('to')}")
+    sio.emit("voice_offer", data, room=data.get('to'))
+
+@sio.event
+def voice_answer(sid, data):
+    print(f"Voice answer from {sid} to {data.get('to')}")
+    sio.emit("voice_answer", data, room=data.get('to'))
+
+@sio.event
+def voice_ice_candidate(sid, data):
+    sio.emit("voice_ice_candidate", data, room=data.get('to'))
+
 if __name__ == '__main__':
     import eventlet
     eventlet.wsgi.server(eventlet.listen(('0.0.0.0', 5000)), app)

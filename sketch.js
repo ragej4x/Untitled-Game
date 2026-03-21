@@ -2,12 +2,12 @@ import {Player} from "./module/player.js";
 import {keyinput} from "./module/keyinput.js";
 import { Tilemap } from "./module/maploader.js";
 import {Camera} from "./module/camera.js";
+import {VoiceChat} from "./module/voicechat.js";
 
 //socket
 import {Socket} from "./module/backend/socket.js";
 
 let socket = new Socket();
-
 socket.init();
 
 //initialization
@@ -15,6 +15,7 @@ socket.init();
 let player = new Player();
 let tilemap = new Tilemap();
 let camera = new Camera(player);
+let voiceChat = null;
 
 window.preload = function(){
     // put a player image in this project path, or customize path
@@ -35,7 +36,11 @@ window.setup = function() {
     frameRate(1000);
     //player.playerRect();
 
-    
+    // Initialize voice chat after a short delay to ensure socket is connected
+    setTimeout(() => {
+        voiceChat = new VoiceChat(socket);
+        console.log("Voice chat initialized");
+    }, 500);
 }
 
 window.draw = function() { 
@@ -69,6 +74,20 @@ window.draw = function() {
     }
 
     text(frameRate(), 10, 10);
+    
+    // Display voice chat status
+    if (voiceChat) {
+        const vcStatus = voiceChat.getStatus();
+        fill(0, 200, 255);
+        textSize(12);
+        let vcText = "VOICE: ";
+        if (vcStatus.enabled) {
+            vcText += (vcStatus.muted ? "MUTED" : "ON") + ` (${vcStatus.activePeers} peers)`;
+        } else {
+            vcText += "OFF";
+        }
+        text(vcText, 10, 90);
+    }
     
     // Display editor mode indicator
     if (tilemap.editorMode) {
@@ -106,6 +125,24 @@ window.keyPressed = function() {
         tilemap.saveMapToBackend(socket);
         return false;
     }
+    // V key - toggle voice chat
+    if (key.toLowerCase() === 'v') {
+        if (voiceChat) {
+            if (voiceChat.isEnabled) {
+                voiceChat.stopVoiceChat();
+            } else {
+                voiceChat.startVoiceChat();
+            }
+        }
+        return false;
+    }
+    // M key - toggle mute
+    if (key.toLowerCase() === 'm') {
+        if (voiceChat && voiceChat.isEnabled) {
+            voiceChat.toggleMute();
+        }
+        return false;
+    }
 }
 
 // Add global keydown listener to prevent browser defaults
@@ -120,6 +157,12 @@ document.addEventListener('keydown', function(e) {
         }
     }
     if (e.key.toLowerCase() === 'e') {
+        e.preventDefault();
+    }
+    if (e.key.toLowerCase() === 'v') {
+        e.preventDefault();
+    }
+    if (e.key.toLowerCase() === 'm') {
         e.preventDefault();
     }
 });
