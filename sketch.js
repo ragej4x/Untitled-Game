@@ -106,6 +106,7 @@ window.setup = function() {
     //surface = createGraphics(400,500);
     //surface.fill(255);
     frameRate(1000);
+    noSmooth();
     //player.playerRect();
 
     // Initialize mobile controls
