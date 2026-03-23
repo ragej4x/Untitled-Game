@@ -293,9 +293,32 @@ export class Tilemap {
 
     load(camera) {
         const ts = this.tile_size;
-        
-        for (let y = 0; y < this.tiles.length; y++) {
-            for (let x = 0; x < this.tiles[y].length; x++) {
+        const scaleFactor = 3.5;
+
+        let minX = 0;
+        let minY = 0;
+        let maxX = this.tiles[0] ? this.tiles[0].length - 1 : 0;
+        let maxY = this.tiles.length - 1;
+
+        const worldLeft = camera.cx;
+        const worldTop = camera.cy;
+        const worldRight = camera.cx + windowWidth / scaleFactor;
+        const worldBottom = camera.cy + windowHeight / scaleFactor;
+
+        minX = Math.floor(worldLeft / ts) - 1;
+        minY = Math.floor(worldTop / ts) - 1;
+        maxX = Math.ceil(worldRight / ts) + 1;
+        maxY = Math.ceil(worldBottom / ts) + 1;
+
+        minX = Math.max(0, minX);
+        minY = Math.max(0, minY);
+        maxX = Math.min(this.tiles[0] ? this.tiles[0].length - 1 : 0, maxX);
+        maxY = Math.min(this.tiles.length - 1, maxY);
+
+        for (let y = minY; y <= maxY; y++) {
+            for (let x = minX; x <= maxX; x++) {
+                if (!this.tiles[y]) continue;
+
                 const tileType = this.tiles[y][x];
                 const meta = this.getTileMeta(tileType);
                 if (tileType > 0 && meta) {
@@ -316,9 +339,15 @@ export class Tilemap {
             }
         }
 
-        // draw furniture layer above ground
-        for (let y = 0; y < this.furniture.length; y++) {
-            for (let x = 0; x < this.furniture[y].length; x++) {
+        const fmMinX = minX;
+        const fmMinY = minY;
+        const fmMaxX = maxX;
+        const fmMaxY = maxY;
+
+        for (let y = fmMinY; y <= fmMaxY; y++) {
+            for (let x = fmMinX; x <= fmMaxX; x++) {
+                if (!this.furniture[y]) continue;
+
                 const fType = this.furniture[y][x];
                 const meta = this.getFurnitureMeta(fType);
                 if (fType > 0 && meta) {
@@ -344,10 +373,10 @@ export class Tilemap {
             stroke(50);
             strokeWeight(1);
             noFill();
-            
-            // Draw grid
-            for (let y = 0; y < this.tiles.length; y++) {
-                for (let x = 0; x < this.tiles[y].length; x++) {
+
+            // Draw grid with same bounds as visible tiles
+            for (let y = minY; y <= maxY; y++) {
+                for (let x = minX; x <= maxX; x++) {
                     rect(
                         x * ts - camera.cx,
                         y * ts - camera.cy,
