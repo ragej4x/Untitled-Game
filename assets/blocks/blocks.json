@@ -1,0 +1,49 @@
+{
+  "tile_size": 16,
+  "tile_types": {
+    "1": {
+      "name": "wood",
+      "width": 16,
+      "height": 16,
+      "color": [100, 100, 100],
+      "solid": true,
+      "image": "assets/blocks/wood.png"
+    },
+    "2": {
+      "name": "stone",
+      "width": 32,
+      "height": 16,
+      "color": [150, 150, 150],
+      "solid": true,
+      "image": "assets/blocks/stone.png"
+    }
+  },
+  "furniture_types": {
+    "1": {
+      "name": "chair",
+      "width": 16,
+      "height": 16,
+      "color": [180, 120, 90],
+      "solid": true,
+      "image": "assets/furniture/chair.png"
+    },
+    "2": {
+      "name": "lamp",
+      "width": 8,
+      "height": 16,
+      "color": [255, 255, 100],
+      "solid": false,
+      "image": "assets/furniture/lamp.png"
+    }
+  },
+  "tiles": [
+    [1, 2, 0, 0, 0, 0, 0, 0],
+    [1, 1, 0, 0, 0, 2, 2, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0]
+  ],
+  "furniture": [
+    [0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 1, 0, 0, 0, 0, 0],
+    [0, 0, 0, 2, 0, 0, 0, 0]
+  ]
+}

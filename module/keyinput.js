@@ -138,6 +138,11 @@ export function keyinput() {
     }
 
     // Desktop keyboard input
+    if (keyIsDown(73)) return "camUp";      // I
+    if (keyIsDown(75)) return "camDown";    // K
+    if (keyIsDown(74)) return "camLeft";    // J
+    if (keyIsDown(76)) return "camRight";   // L
+
     if (keyIsDown(LEFT_ARROW)) return "left";
     if (keyIsDown(RIGHT_ARROW)) return "right";
     if (keyIsDown(UP_ARROW)) return "up";

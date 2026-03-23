@@ -99,6 +99,8 @@ window.preload = function(){
     
     animator = new PlayerAnimator(frameGroups, { frameDelay: 100 });
     player.setAnimator(animator);
+    // Load block/tile metadata from blocks.json
+    tilemap.loadBlockConfig('assets/blocks.json');
 }
 
 window.setup = function() {
@@ -106,8 +108,8 @@ window.setup = function() {
     //surface = createGraphics(400,500);
     //surface.fill(255);
     frameRate(1000);
-    noSmooth();
     //player.playerRect();
+    noSmooth();
 
     // Initialize mobile controls
     mobileControls.init();
@@ -117,6 +119,7 @@ window.setup = function() {
     //    voiceChat = new VoiceChat(socket);
     //    console.log("Voice chat initialized");
     //}, 500);
+    
 }
 
 window.draw = function() { 
@@ -131,6 +134,14 @@ window.draw = function() {
         socket.sendPlayer(player);
 
         camera.update();
+    } else {
+        // Editor camera control (i,k,j,l)
+        const camInput = keyinput();
+        const cameraSpeed = 5;
+        if (camInput === 'camUp') camera.cy -= cameraSpeed;
+        if (camInput === 'camDown') camera.cy += cameraSpeed;
+        if (camInput === 'camLeft') camera.cx -= cameraSpeed;
+        if (camInput === 'camRight') camera.cx += cameraSpeed;
     }
 
     // Consume map data from server one time, then clear
@@ -161,9 +172,9 @@ window.draw = function() {
     
     // Display editor mode indicator
     if (tilemap.editorMode) {
-        fill(255, 255, 0);
+        //fill(255, 255, 0);
         textSize(16);
-        text("EDITOR MODE - Press E to toggle, Click to paint, C to clear, S to save", 10, 30);
+        //text("EDITOR MODE - Press E to toggle, Click to paint, C to clear, S to save", 10, 30);
     }
 
     pop();
@@ -190,8 +201,10 @@ window.draw = function() {
 
 window.mousePressed = function() {
     if (tilemap.editorMode) {
-        const world = tilemap.screenToWorld(mouseX, mouseY, camera);
-        tilemap.toggleTile(world.x, world.y);
+        if (!tilemap.handleClick(mouseX, mouseY)) {
+            const world = tilemap.screenToWorld(mouseX, mouseY, camera);
+            tilemap.toggleTile(world.x, world.y);
+        }
         return false;
     }
 }
@@ -200,6 +213,12 @@ window.keyPressed = function() {
     // E key - toggle editor mode
     if (key.toLowerCase() === 'e') {
         tilemap.toggleEditorMode();
+        return false;
+    }
+    // F key - toggle selected editing layer (ground/furniture)
+    if (key.toLowerCase() === 'f' && tilemap.editorMode) {
+        tilemap.selectedLayer = tilemap.selectedLayer === 'ground' ? 'furniture' : 'ground';
+        console.log('Selected layer:', tilemap.selectedLayer);
         return false;
     }
     // C key - clear map

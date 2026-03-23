@@ -1,5 +1,5 @@
 
-let socket = io("http://127.0.0.1:5000");
+let socket = io("https://minigame.taketwomanila.com");
 
 
 export class Socket {
@@ -44,6 +44,11 @@ export class Socket {
       colliderOffsetX: player.colliderOffsetX,
       colliderOffsetY: player.colliderOffsetY
     });
+  }
+
+  saveMap(mapData) {
+    if (!mapData) return;
+    socket.emit("save_map", mapData);
   }
 
 }
