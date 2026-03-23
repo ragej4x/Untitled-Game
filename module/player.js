@@ -18,11 +18,11 @@ export class Player {
         this.currentDirection = "none"; // Current movement direction (walk vs idle)
         
         // Collider dimensions (separate from image size)
-        this.colliderWidth = 14;
-        this.colliderHeight = 10;
-        this.colliderOffsetX = 0; // X offset from image position
-        this.colliderOffsetY = 21; // Y offset from image position
-        this.showCollider = false; // Debug flag
+        this.colliderWidth = 12;
+        this.colliderHeight = 7;
+        this.colliderOffsetX = 2; // X offset from image position
+        this.colliderOffsetY = 25; // Y offset from image position
+        this.showCollider = true; // Debug flag
         
         // Network players storage - track animator state per network player
         this.networkPlayerAnimators = {};
@@ -62,22 +62,24 @@ export class Player {
         // --- Horizontal ---
         this.x += this.x_vel;
         for (let tile of tilemap.getOverlappingTiles(this)) {
+            const tileW = typeof tile.w === 'number' ? tile.w : tilemap.tile_size;
             console.log("H collision", tile, "x_vel:", this.x_vel);
             if (this.x_vel > 0) {
                 this.x = tile.x - this.colliderWidth - this.colliderOffsetX;
             } else if (this.x_vel < 0) {
-                this.x = tile.x + tilemap.tile_size - this.colliderOffsetX;
+                this.x = tile.x + tileW - this.colliderOffsetX;
             }
         }
 
         // --- Vertical ---
         this.y += this.y_vel;
         for (let tile of tilemap.getOverlappingTiles(this)) {
+            const tileH = typeof tile.h === 'number' ? tile.h : tilemap.tile_size;
             console.log("V collision", tile, "y_vel:", this.y_vel);
             if (this.y_vel > 0) {
                 this.y = tile.y - this.colliderHeight - this.colliderOffsetY;
             } else if (this.y_vel < 0) {
-                this.y = tile.y + tilemap.tile_size - this.colliderOffsetY;
+                this.y = tile.y + tileH - this.colliderOffsetY;
             }
         }
     }
@@ -144,8 +146,8 @@ export class Player {
             }
 
             // Draw network player with animation
-            let playerWidth = p.width || this.width;
-            let playerHeight = p.height || this.height;
+            let playerWidth = typeof p.width === 'number' ? p.width : this.width;
+            let playerHeight = typeof p.height === 'number' ? p.height : this.height;
             
             if (playerState.animator) {
                 playerState.animator.draw(
@@ -160,10 +162,10 @@ export class Player {
             }
 
             // Draw collider box for network player
-            let colliderWidth = p.colliderWidth || playerWidth;
-            let colliderHeight = p.colliderHeight || playerHeight;
-            let colliderOffsetX = p.colliderOffsetX || 0;
-            let colliderOffsetY = p.colliderOffsetY || 0;
+            let colliderWidth = typeof p.colliderWidth === 'number' ? p.colliderWidth : this.colliderWidth;
+            let colliderHeight = typeof p.colliderHeight === 'number' ? p.colliderHeight : this.colliderHeight;
+            let colliderOffsetX = typeof p.colliderOffsetX === 'number' ? p.colliderOffsetX : this.colliderOffsetX;
+            let colliderOffsetY = typeof p.colliderOffsetY === 'number' ? p.colliderOffsetY : this.colliderOffsetY;
             
             if (this.showCollider) {
                 stroke(255, 100, 100);
