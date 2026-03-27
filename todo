@@ -1,0 +1,81 @@
+add building
+map editor with tiles
+
+sound fx
+
+game context
+
+start small business - climb up to the top
+starting - laundry shop, coffee shop, sarisari store, junk shop
+med - small apartment for rent
+big - hotels, electrict company, water company
+
+every 10 minutes electrict and water will deduct on player income
+
+player interaction plus income in marketing
+leaderboards
+
+
+
+
+Each business consumes utilities:
+
+Business	Electric	Water
+Laundry	High	High
+Coffee	Medium	Medium
+Hotel	Very High	High
+
+-need to fix
+if networkplayer y > player then make the image of networkplayer display on top of player
+
+
+- its not saving if the tile data is large on both layer1.txt and tilemap_data.txt
+
+
+
+
+
+
+
+
+cloudflared tunnel run minigame
+
+{
+  "tile_size": 16,
+  "tile_types": {
+    "1": {
+      "tag": "blocks",
+      "width": 16,
+      "height": 16,
+      "color": [100, 100, 100],
+      "solid": true,
+      "folder": "assets/blocks/Tiles",
+      "fileExtension": "png"
+    },
+    "900": {
+      "name": "stone",
+      "width": 32,
+      "height": 16,
+      "color": [150, 150, 150],
+      "solid": true,
+      "image": "assets/blocks/stone.png"
+    }
+  },
+  "furniture_types": {
+    "1": {
+      "tag": "furniture",
+      "width": 16,
+      "height": 16,
+      "color": [180, 120, 90],
+      "solid": false,
+      "folder": "assets/furniture",
+      "fileExtension": "png"
+    }
+  },
+  "tiles": [
+    [0]
+  ],
+  "furniture": [
+    [0]
+  ]
+}

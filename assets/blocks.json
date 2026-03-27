@@ -2,40 +2,30 @@
   "tile_size": 16,
   "tile_types": {
     "1": {
-      "name": "wood",
+      "tag": "blocks",
       "width": 16,
       "height": 16,
       "color": [100, 100, 100],
       "solid": true,
-      "image": "assets/blocks/wood.png"
-    },
-    "2": {
-      "name": "stone",
-      "width": 32,
-      "height": 16,
-      "color": [150, 150, 150],
-      "solid": true,
-      "image": "assets/blocks/stone.png"
+      "folder": "assets/blocks/Tiles",
+      "fileExtension": "png"
     }
   },
   "furniture_types": {
     "1": {
-      "name": "chair",
+      "tag": "furniture",
       "width": 16,
       "height": 16,
       "color": [180, 120, 90],
       "solid": false,
-      "image": "assets/furniture/chair.png"
+      "folder": "assets/furniture",
+      "fileExtension": "png"
     }
   },
   "tiles": [
     [0]
-    
-    
   ],
   "furniture": [
     [0]
-
-
   ]
 }
