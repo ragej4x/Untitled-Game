@@ -124,7 +124,13 @@ window.setup = function() {
 
 window.draw = function() { 
     background(0);
-    scale(3.5);
+
+    // Global overlay HUD (fixed screen) - always visible
+    fill(255);
+    noStroke();
+    textSize(14);
+    text(`FPS: ${nf(frameRate(), 2, 1)}`, 10, 20);
+    text(`Mode: ${tilemap.toolMode} | Brush: ${tilemap.brushSize} | Layer: ${tilemap.selectedLayer}`, 10, 40);
 
     if (!tilemap.editorMode) {
         player.move(keyinput());
@@ -151,6 +157,8 @@ window.draw = function() {
     }
 
     push();
+    scale(3.5);
+
     tilemap.load(camera);
 
     // draw other players from server state
@@ -160,21 +168,11 @@ window.draw = function() {
         player.draw(camera);
     }
 
-    text(frameRate(), 10, 10);
-    
-    // Display voice chat status - optimized rendering
-    //if (voiceChat && voiceChat.isEnabled) {
-    //    const vcStatus = voiceChat.getStatus();
-    //    fill(0, 200, 255);
-    //    textSize(12);
-    //    text(`VOICE: ${vcStatus.muted ? "MUTED" : "ON"} (${vcStatus.activePeers}p)`, 10, 90);
-    //}
-    
     // Display editor mode indicator
     if (tilemap.editorMode) {
-        //fill(255, 255, 0);
-        textSize(16);
-        //text("EDITOR MODE - Press E to toggle, Click to paint, C to clear, S to save", 10, 30);
+        textSize(1);
+        fill(255);
+        text(`EDITOR MODE - E to toggle, 1-4 tools, +/- brush`, 10, 30);
     }
 
     pop();
@@ -203,7 +201,18 @@ window.mousePressed = function() {
     if (tilemap.editorMode) {
         if (!tilemap.handleClick(mouseX, mouseY)) {
             const world = tilemap.screenToWorld(mouseX, mouseY, camera);
-            tilemap.toggleTile(world.x, world.y);
+            tilemap.paintTile(world.x, world.y);
+        }
+        return false;
+    }
+}
+
+window.mouseDragged = function() {
+    if (tilemap.editorMode && mouseButton === LEFT) {
+        // Continue drawing while dragging (swipe painter)
+        if (!tilemap.handleClick(mouseX, mouseY)) {
+            const world = tilemap.screenToWorld(mouseX, mouseY, camera);
+            tilemap.paintTile(world.x, world.y);
         }
         return false;
     }
@@ -215,25 +224,47 @@ window.keyPressed = function() {
         tilemap.toggleEditorMode();
         return false;
     }
-    // F key - toggle selected editing layer (ground/furniture)
-    if (key.toLowerCase() === 'f' && tilemap.editorMode) {
-        tilemap.selectedLayer = tilemap.selectedLayer === 'ground' ? 'furniture' : 'ground';
-        console.log('Selected layer:', tilemap.selectedLayer);
-        return false;
-    }
-    // C key - clear map
-    if (key.toLowerCase() === 'c' && tilemap.editorMode) {
-        tilemap.clearMap();
-        return false;
-    }
-    // S key - save/export map
-    if (key.toLowerCase() === 's' && tilemap.editorMode) {
-        console.log("Saving map...");
-        tilemap.exportMapData();
-        tilemap.saveMapToBackend(socket);
-        return false;
+
+    if (tilemap.editorMode) {
+        // F key - toggle selected editing layer (ground/furniture)
+        if (key.toLowerCase() === 'f') {
+            tilemap.selectedLayer = tilemap.selectedLayer === 'ground' ? 'furniture' : 'ground';
+            console.log('Selected layer:', tilemap.selectedLayer);
+            return false;
+        }
+
+        // C key - clear map
+        if (key.toLowerCase() === 'c') {
+            tilemap.clearMap();
+            return false;
+        }
+
+        // S key - save/export map
+        if (key.toLowerCase() === 's') {
+            console.log("Saving map...");
+            tilemap.exportMapData();
+            tilemap.saveMapToBackend(socket);
+            return false;
+        }
+
+        // Tool modes
+        if (key === '1') { tilemap.setToolMode('brush'); return false; }
+        if (key === '2') { tilemap.setToolMode('eraser'); return false; }
+        if (key === '3') { tilemap.setToolMode('line'); return false; }
+        if (key === '4') { tilemap.setToolMode('bucket'); return false; }
+
+        // Brush size adjustment
+        if (key === '+' || key === '=') {
+            tilemap.setBrushSize(tilemap.brushSize + 1);
+            return false;
+        }
+        if (key === '-') {
+            tilemap.setBrushSize(tilemap.brushSize - 1);
+            return false;
+        }
     }
 }
+
 
 // Add global keydown listener to prevent browser defaults
 document.addEventListener('keydown', function(e) {
